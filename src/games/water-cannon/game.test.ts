@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AIM_LIMIT,
+  AIM_TURN_SPEED,
   CANNON,
   TANK_SIZE,
+  aimAngle,
+  aimPoint,
   createState,
   fire,
   isHit,
   scoreForHit,
   step,
+  turnAim,
   type Target,
 } from './game';
 
@@ -76,5 +81,37 @@ describe('water cannon', () => {
     const slow = scoreForHit({ ...target, speed: 60 });
     const fast = scoreForHit({ ...target, speed: -180 });
     expect(Math.max(fast, slow)).toBeGreaterThanOrEqual(slow);
+  });
+
+  describe('keyboard aiming', () => {
+    it('turns the aim left and right', () => {
+      expect(turnAim(0, -1, 0.1)).toBeCloseTo(-AIM_TURN_SPEED * 0.1);
+      expect(turnAim(0, 1, 0.1)).toBeCloseTo(AIM_TURN_SPEED * 0.1);
+      expect(turnAim(0.3, 0, 0.1)).toBe(0.3);
+    });
+
+    it('stops at the limits', () => {
+      expect(turnAim(AIM_LIMIT - 0.01, 1, 1)).toBe(AIM_LIMIT);
+      expect(turnAim(-AIM_LIMIT + 0.01, -1, 1)).toBe(-AIM_LIMIT);
+    });
+
+    it('brings a mouse aim from below the cannon back within the limits', () => {
+      const angle = aimAngle(CANNON.x + 100, CANNON.y + 100);
+      expect(turnAim(angle, -1, 0.01)).toBeLessThanOrEqual(AIM_LIMIT);
+    });
+
+    it('reads back the angle of an aim point', () => {
+      expect(aimAngle(CANNON.x, 0)).toBeCloseTo(0);
+      const point = aimPoint(0.5);
+      expect(aimAngle(point.x, point.y)).toBeCloseTo(0.5);
+    });
+
+    it('fires along the turned aim', () => {
+      const state = createState();
+      const point = aimPoint(turnAim(0, 1, 0.2));
+      fire(state, point.x, point.y);
+      const shot = state.shots[0];
+      expect(Math.atan2(shot.vx, -shot.vy)).toBeCloseTo(AIM_TURN_SPEED * 0.2);
+    });
   });
 });
