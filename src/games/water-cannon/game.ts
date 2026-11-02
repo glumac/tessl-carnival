@@ -11,6 +11,11 @@ const RAILS = [
   { y: 290, speed: 60, radius: 34 },
 ];
 const TARGETS_PER_RAIL = 3;
+/** How fast the arrow keys swing the cannon, in radians per second. */
+export const AIM_TURN_SPEED = 2;
+/** How far the cannon can swing either side of straight up, in radians. */
+export const AIM_LIMIT = (75 * Math.PI) / 180;
+const AIM_REACH = 200;
 
 export interface Target {
   x: number;
@@ -78,6 +83,28 @@ export function fire(state: WaterCannonState, aimX: number, aimY: number): boole
   });
   state.tank -= 1;
   return true;
+}
+
+/** The aim's angle from straight up: negative is left, positive is right. */
+export function aimAngle(aimX: number, aimY: number): number {
+  return Math.atan2(aimX - CANNON.x, Math.max(CANNON.y - aimY, 1));
+}
+
+/**
+ * Swings the aim for `dt` seconds: `direction` is -1 for left, 1 for right and
+ * 0 for neither. The result stays within `AIM_LIMIT` of straight up.
+ */
+export function turnAim(angle: number, direction: -1 | 0 | 1, dt: number): number {
+  const turned = angle + direction * AIM_TURN_SPEED * dt;
+  return Math.max(-AIM_LIMIT, Math.min(AIM_LIMIT, turned));
+}
+
+/** A point the cannon aims at when it points at `angle`. */
+export function aimPoint(angle: number): { x: number; y: number } {
+  return {
+    x: CANNON.x + Math.sin(angle) * AIM_REACH,
+    y: CANNON.y - Math.cos(angle) * AIM_REACH,
+  };
 }
 
 /** Advances the game by `dt` seconds. */
@@ -195,7 +222,7 @@ function draw(
     ctx.fillText(`Tank empty! You scored ${state.score}`, WIDTH / 2, HEIGHT / 2);
     ctx.fillStyle = colors.text;
     ctx.font = canvasFont('body');
-    ctx.fillText('Click to play again', WIDTH / 2, HEIGHT / 2 + 40);
+    ctx.fillText('Click or press Space to play again', WIDTH / 2, HEIGHT / 2 + 40);
   }
 }
 
@@ -222,8 +249,7 @@ export const waterCannon: CarnivalGame = {
       };
     };
     const onMove = (event: PointerEvent) => Object.assign(aim, toCanvas(event));
-    const onDown = (event: PointerEvent) => {
-      Object.assign(aim, toCanvas(event));
+    const fireOrRestart = () => {
       if (state.phase === 'over') {
         state = createState();
         scoreRecorded = false;
@@ -231,8 +257,34 @@ export const waterCannon: CarnivalGame = {
         fire(state, aim.x, aim.y);
       }
     };
+    const onDown = (event: PointerEvent) => {
+      Object.assign(aim, toCanvas(event));
+      fireOrRestart();
+    };
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerdown', onDown);
+
+    const held = { left: false, right: false };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') held.left = true;
+      else if (event.key === 'ArrowRight') held.right = true;
+      else if (event.key === ' ') {
+        if (!event.repeat) fireOrRestart();
+      } else return;
+      // Keep Space and the arrow keys from scrolling the page.
+      event.preventDefault();
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') held.left = false;
+      else if (event.key === 'ArrowRight') held.right = false;
+    };
+    const onBlur = () => {
+      held.left = false;
+      held.right = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
 
     let frame = 0;
     let last = performance.now();
@@ -240,6 +292,10 @@ export const waterCannon: CarnivalGame = {
       // Cap the step so a background tab doesn't teleport everything.
       const dt = Math.min((time - last) / 1000, 0.05);
       last = time;
+      const direction = (Number(held.right) - Number(held.left)) as -1 | 0 | 1;
+      if (direction !== 0) {
+        Object.assign(aim, aimPoint(turnAim(aimAngle(aim.x, aim.y), direction, dt)));
+      }
       step(state, dt);
       if (state.phase === 'over' && !scoreRecorded) {
         recordScore(waterCannon.id, state.score);
@@ -254,6 +310,9 @@ export const waterCannon: CarnivalGame = {
       cancelAnimationFrame(frame);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
     };
   },
 };
