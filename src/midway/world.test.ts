@@ -6,10 +6,12 @@ import {
   createWalker,
   findPath,
   followPath,
+  ghostSpots,
   inputDirection,
   isBlocked,
   layoutMidway,
   pathToBooth,
+  pumpkinSpots,
   seededRandom,
   toScreen,
   toTile,
@@ -85,6 +87,56 @@ describe('layoutMidway', () => {
 
   it('is the same on every visit', () => {
     expect(layoutMidway(['a'])).toEqual(layoutMidway(['a']));
+  });
+});
+
+describe('Halloween scenery', () => {
+  it('puts pumpkins on open grass beside every booth, never inside anything', () => {
+    for (const count of [0, 1, 4, 9]) {
+      const map = layoutMidway(Array.from({ length: count }, (_, i) => `game-${i}`));
+      expect(map.pumpkins.length).toBeGreaterThanOrEqual(map.booths.length);
+      for (const p of map.pumpkins) {
+        const tx = Math.floor(p.x);
+        const ty = Math.floor(p.y);
+        expect(isBlocked(map, tx, ty), `${count} games: ${tx},${ty}`).toBe(false);
+        expect(map.ground[ty * map.width + tx]).toBe('grass');
+      }
+      for (const booth of map.booths) {
+        const beside = map.pumpkins.some((p) => boothInReach(map, p, 1) === booth);
+        expect(beside, `${count} games: booth ${booth.index}`).toBe(true);
+      }
+    }
+  });
+
+  it('keeps pumpkins in the same places on every visit', () => {
+    const map = layoutMidway(['a', 'b', 'c']);
+    expect(layoutMidway(['a', 'b', 'c']).pumpkins).toEqual(map.pumpkins);
+    expect(pumpkinSpots(map, map.avenueX)).toEqual(map.pumpkins);
+  });
+
+  it("doesn't block walking: every booth is still reachable", () => {
+    const map = layoutMidway(Array.from({ length: 5 }, (_, i) => `game-${i}`));
+    for (const p of map.pumpkins) {
+      expect(canStand(map, p.x, p.y)).toBe(true);
+    }
+    for (const booth of map.booths) {
+      const path = pathToBooth(map, map.spawn, booth);
+      expect(path).toBeDefined();
+      expect(boothInReach(map, path!.at(-1)!)).toBe(booth);
+    }
+  });
+
+  it('floats a ghost over each row of booths and one by the big top', () => {
+    const map = layoutMidway(Array.from({ length: 6 }, (_, i) => `game-${i}`));
+    expect(map.ghosts).toHaveLength(map.booths.length / 2 + 1);
+    expect(ghostSpots(map.booths, map.avenueX)).toEqual(map.ghosts);
+    for (const ghost of map.ghosts) {
+      expect(ghost.x).toBeGreaterThan(0);
+      expect(ghost.x).toBeLessThan(map.width);
+      expect(ghost.y).toBeGreaterThan(0);
+      expect(ghost.y).toBeLessThan(map.height);
+    }
+    expect(new Set(map.ghosts.map((g) => g.phase)).size).toBe(map.ghosts.length);
   });
 });
 

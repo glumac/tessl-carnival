@@ -5,6 +5,7 @@ import {
   CART_KINDS,
   toScreen,
   type BoothSlot,
+  type Ghost,
   type MidwayMap,
   type Point,
   type Prop,
@@ -1708,6 +1709,16 @@ export function drawCloud(ctx: Ctx, x: number, y: number, size: number) {
   ctx.fill();
 }
 
+/** A full moon hanging over the midway, with a soft glow and a couple of craters. */
+export function drawMoon(ctx: Ctx, x: number, y: number) {
+  oval(ctx, x, y, 34, 34, palette.moonGlow);
+  oval(ctx, x, y, 24, 24, palette.moonGlow);
+  oval(ctx, x, y, 16, 16, palette.moon);
+  oval(ctx, x - 5, y - 3, 3.5, 3, palette.moonShade);
+  oval(ctx, x + 5, y + 5, 2.5, 2, palette.moonShade);
+  oval(ctx, x + 4, y - 7, 1.6, 1.4, palette.moonShade);
+}
+
 export interface Floater {
   x: number;
   y: number;
@@ -1730,6 +1741,96 @@ export function drawFloaters(ctx: Ctx, floaters: readonly Floater[]) {
     oval(ctx, f.x + sway - 1.8, f.y - 2.5, 1.4, 2, 'rgba(255,255,255,0.6)');
   }
   ctx.globalAlpha = 1;
+}
+
+// ── Halloween ─────────────────────────────────────────────────────────────
+
+/** A jack-o'-lantern sitting on the ground, its face flickering a little. */
+export function drawPumpkin(ctx: Ctx, spot: Point, t: number) {
+  const [x, y] = at(spot.x, spot.y);
+  const flicker = 0.85 + Math.sin(t * 9 + spot.x * 3 + spot.y) * 0.15;
+  const alpha = ctx.globalAlpha;
+  ctx.globalAlpha = alpha * flicker;
+  oval(ctx, x, y - 1, 13, 6, palette.lanternGlow);
+  ctx.globalAlpha = alpha;
+  oval(ctx, x + 2, y + 1, 7, 2.5, palette.shadow);
+  oval(ctx, x - 3, y - 5, 4, 5, palette.pumpkinShade);
+  oval(ctx, x + 3, y - 5, 4, 5, palette.pumpkinShade);
+  oval(ctx, x, y - 5, 4.5, 5.5, palette.pumpkin);
+  poly(
+    ctx,
+    [
+      [x - 0.8, y - 10],
+      [x + 0.8, y - 10],
+      [x + 1.5, y - 13],
+      [x, y - 13],
+    ],
+    palette.pumpkinStem,
+  );
+  // Two triangle eyes and a grin, lit from inside.
+  const eye = (ex: number) =>
+    poly(
+      ctx,
+      [
+        [ex - 1.3, y - 5],
+        [ex + 1.3, y - 5],
+        [ex, y - 7.2],
+      ],
+      palette.lantern,
+    );
+  eye(x - 2.2);
+  eye(x + 2.2);
+  poly(
+    ctx,
+    [
+      [x - 3, y - 3.6],
+      [x + 3, y - 3.6],
+      [x + 1.5, y - 1.8],
+      [x - 1.5, y - 1.8],
+    ],
+    palette.lantern,
+  );
+}
+
+/** The screen box a pumpkin is drawn in. */
+export function pumpkinBounds(spot: Point): Box {
+  const p = toScreen(spot.x, spot.y);
+  return { left: p.x - 13, right: p.x + 13, top: p.y - 14, bottom: p.y + 5 };
+}
+
+/** How high above the ground a ghost floats. */
+const GHOST_HEIGHT = 70;
+
+/** A small sheet ghost bobbing and swaying above the midway. */
+export function drawGhost(ctx: Ctx, ghost: Ghost, t: number) {
+  const bob = Math.sin(t * 1.4 + ghost.phase) * 5;
+  const sway = Math.sin(t * 0.6 + ghost.phase * 2) * 6;
+  const [gx, gy] = at(ghost.x, ghost.y, GHOST_HEIGHT);
+  const x = gx + sway;
+  const y = gy + bob;
+  oval(ctx, gx, at(ghost.x, ghost.y)[1] + 1, 6, 2.2, palette.shadow);
+  ctx.fillStyle = palette.ghost;
+  ctx.beginPath();
+  ctx.arc(x, y - 6, 7, Math.PI, 0);
+  ctx.lineTo(x + 7, y + 6);
+  // A wavy hem that ripples as it floats.
+  const ripple = Math.sin(t * 4 + ghost.phase) * 1.2;
+  for (let i = 0; i < 4; i++) {
+    const right = x + 7 - i * 3.5;
+    ctx.quadraticCurveTo(right - 1.75, y + 9 + (i % 2 ? -ripple : ripple), right - 3.5, y + 6);
+  }
+  ctx.closePath();
+  ctx.fill();
+  oval(ctx, x - 2.5, y - 6, 1.3, 1.8, palette.ink);
+  oval(ctx, x + 2.5, y - 6, 1.3, 1.8, palette.ink);
+  oval(ctx, x, y - 1.5, 1.4, 1.8, palette.ghostShade);
+}
+
+/** The screen box a ghost can be drawn in, wherever it is in its bob. */
+export function ghostBounds(ghost: Ghost): Box {
+  const p = toScreen(ghost.x, ghost.y);
+  const top = p.y - GHOST_HEIGHT;
+  return { left: p.x - 14, right: p.x + 14, top: top - 20, bottom: p.y + 4 };
 }
 
 // ── Everything else ───────────────────────────────────────────────────────
