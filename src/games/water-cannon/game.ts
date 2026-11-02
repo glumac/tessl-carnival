@@ -248,7 +248,16 @@ export const waterCannon: CarnivalGame = {
         y: ((event.clientY - rect.top) / rect.height) * HEIGHT,
       };
     };
-    const onMove = (event: PointerEvent) => Object.assign(aim, toCanvas(event));
+    const held = { left: false, right: false };
+    const releaseArrows = () => {
+      held.left = false;
+      held.right = false;
+    };
+    // The pointer takes the aim back from any held arrow until an arrow is pressed again.
+    const onMove = (event: PointerEvent) => {
+      releaseArrows();
+      Object.assign(aim, toCanvas(event));
+    };
     const fireOrRestart = () => {
       if (state.phase === 'over') {
         state = createState();
@@ -258,16 +267,19 @@ export const waterCannon: CarnivalGame = {
       }
     };
     const onDown = (event: PointerEvent) => {
+      releaseArrows();
       Object.assign(aim, toCanvas(event));
       fireOrRestart();
     };
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerdown', onDown);
 
-    const held = { left: false, right: false };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowLeft') held.left = true;
-      else if (event.key === 'ArrowRight') held.right = true;
+      // Leave browser shortcuts such as Alt+Left alone.
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Key repeat doesn't take the aim back from the pointer.
+      if (event.key === 'ArrowLeft') held.left ||= !event.repeat;
+      else if (event.key === 'ArrowRight') held.right ||= !event.repeat;
       else if (event.key === ' ') {
         if (!event.repeat) fireOrRestart();
       } else return;
@@ -278,13 +290,9 @@ export const waterCannon: CarnivalGame = {
       if (event.key === 'ArrowLeft') held.left = false;
       else if (event.key === 'ArrowRight') held.right = false;
     };
-    const onBlur = () => {
-      held.left = false;
-      held.right = false;
-    };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('blur', onBlur);
+    window.addEventListener('blur', releaseArrows);
 
     let frame = 0;
     let last = performance.now();
@@ -312,7 +320,7 @@ export const waterCannon: CarnivalGame = {
       canvas.removeEventListener('pointerdown', onDown);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('blur', releaseArrows);
     };
   },
 };
