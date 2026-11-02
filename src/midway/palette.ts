@@ -3,27 +3,41 @@ import { theme } from '../carnival';
 const { colors } = theme;
 
 /**
- * The midway map's daytime palette. Tent reds, creams and golds come from the
- * carnival theme; the sky, grass, paths and other scenery shades only the map
- * uses live here.
+ * The midway map's Halloween night palette. Tent reds, creams and golds come
+ * from the carnival theme; the sky, grass, paths and other scenery shades only
+ * the map uses live here.
  */
 export const palette = {
-  sky: '#38b4e6',
-  skyHigh: '#1f9bd6',
-  cloud: '#bfeafc',
-  cloudShade: '#94d8f4',
-  haze: '#5fc3b8',
+  sky: '#2a1442',
+  skyHigh: '#07040f',
+  cloud: 'rgba(120, 104, 160, 0.35)',
+  cloudShade: 'rgba(84, 70, 120, 0.3)',
+  haze: '#3a2f52',
+  moon: '#f4ecc8',
+  moonShade: '#d9cc9a',
+  moonGlow: 'rgba(244, 236, 200, 0.12)',
 
-  grass: '#a5c43a',
-  grassDark: '#8aab2a',
-  grassEdge: '#7a9a22',
-  grassLight: '#b6d24c',
-  path: '#f3e28e',
-  pathShade: '#e2cd70',
-  hedge: '#6f9a2c',
-  hedgeDark: '#5a8122',
-  hedgeLight: '#86b236',
-  shadow: 'rgba(60, 90, 10, 0.28)',
+  grass: '#1f3324',
+  grassDark: '#152419',
+  grassEdge: '#14211a',
+  grassLight: '#27402c',
+  path: '#5a5068',
+  pathShade: '#463e54',
+  hedge: '#1d3a26',
+  hedgeDark: '#122719',
+  hedgeLight: '#2a4d33',
+  shadow: 'rgba(0, 0, 0, 0.4)',
+
+  pumpkin: '#f07a1a',
+  pumpkinShade: '#c25a10',
+  pumpkinStem: '#3f5a1e',
+  lantern: '#ffd84a',
+  lanternGlow: 'rgba(255, 170, 40, 0.22)',
+  ghost: 'rgba(245, 245, 255, 0.78)',
+  ghostShade: 'rgba(200, 200, 235, 0.6)',
+  orange: '#ff8c1a',
+  slime: '#8fe33a',
+  purple: '#8e4fd1',
 
   red: colors.stripeA,
   redShade: '#b8283a',
@@ -50,8 +64,8 @@ export const palette = {
 
   skins: ['#f1c27d', '#c68642', '#8d5524', '#e0ac69', '#ffdbac'],
   hairs: ['#3b2219', '#1b1035', '#a55728', '#e6c35c', '#6b4429'],
-  shirts: [colors.water, '#7bd389', '#b48ee0', colors.danger, '#2b8ccc', colors.stripeB],
+  shirts: ['#ff8c1a', '#8fe33a', '#8e4fd1', colors.danger, '#2b8ccc', colors.stripeB],
   pants: ['#2d3a6b', '#3b2a4f', '#5a4a3a'],
-  bunting: [colors.stripeA, colors.accent, '#2b8ccc', colors.stripeB],
-  balloons: [colors.stripeA, colors.accent, '#2b8ccc', colors.water, '#f59ac0'],
+  bunting: ['#ff8c1a', '#8e4fd1', '#8fe33a', colors.stripeB],
+  balloons: ['#ff8c1a', '#8e4fd1', '#8fe33a', colors.accent, colors.stripeA],
 } as const;

@@ -10,14 +10,19 @@ import {
   drawFloaters,
   drawFrontHedge,
   drawField,
+  drawGhost,
   drawGroundLayer,
+  drawMoon,
   drawProp,
+  drawPumpkin,
   drawWalker,
+  ghostBounds,
   groundBounds,
   HORIZON,
   label,
   PLAYER_LOOK,
   propBounds,
+  pumpkinBounds,
   visitorLook,
   type Box,
   type Cloud,
@@ -83,7 +88,14 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
   const names = new Map(options.games.map((g) => [g.id, g.name]));
   const player = createWalker(returnTo ?? map.spawn);
   // Booths and scenery never move, so work out where each one sits once.
-  const scenery: { depth: number; box: Box; booth?: BoothSlot; prop?: Prop; name: string }[] = [
+  const scenery: {
+    depth: number;
+    box: Box;
+    booth?: BoothSlot;
+    prop?: Prop;
+    pumpkin?: Point;
+    name: string;
+  }[] = [
     ...map.booths.map((booth) => ({
       depth: booth.x + booth.y + 2,
       box: boothBounds(booth),
@@ -94,6 +106,12 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
       depth: prop.x + prop.y + (prop.w + prop.h) / 2,
       box: propBounds(prop),
       prop,
+      name: '',
+    })),
+    ...map.pumpkins.map((pumpkin) => ({
+      depth: pumpkin.x + pumpkin.y,
+      box: pumpkinBounds(pumpkin),
+      pumpkin,
       name: '',
     })),
   ];
@@ -271,6 +289,7 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     ctx.fillRect(0, 0, canvas.clientWidth, Math.max(0, horizon + 2));
 
     ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, 0, 0);
+    drawMoon(ctx, view.w * 0.78 - camera.x * 0.05, HORIZON - camera.y - 120);
     const span = view.w + 200;
     for (const cloud of clouds) {
       const x =
@@ -362,10 +381,12 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     ];
     for (const item of scenery) {
       if (!onScreen(item.box)) continue;
-      const { depth, box, booth, prop, name } = item;
+      const { depth, box, booth, prop, pumpkin, name } = item;
       const paint = booth
         ? () => drawBooth(ctx, booth, name, t, booth === inReach)
-        : () => drawProp(ctx, prop!, t);
+        : pumpkin
+          ? () => drawPumpkin(ctx, pumpkin, t)
+          : () => drawProp(ctx, prop!, t);
       drawables.push({ depth, box, draw: () => faded(box, depth, paint) });
     }
     drawables
@@ -377,6 +398,9 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     if (onScreen(archBounds(map))) faded(archBounds(map), Infinity, () => drawArch(ctx, map, t));
     drawBunting(ctx, map, t, visible);
     drawFloaters(ctx, floaters);
+    // Ghosts float over everything; reduced motion keeps them still.
+    for (const ghost of map.ghosts)
+      if (onScreen(ghostBounds(ghost))) drawGhost(ctx, ghost, calm ? 0 : t);
 
     // The prompt over the booth in reach, at full resolution.
     if (inReach?.gameId) {

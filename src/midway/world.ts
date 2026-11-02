@@ -67,9 +67,17 @@ export interface MidwayMap {
   props: Prop[];
   /** Pairs of poles with a string of bunting hung between them. */
   bunting: [Point, Point][];
+  /** Where jack-o'-lanterns sit. They're scenery on the ground and block nothing. */
+  pumpkins: Point[];
+  /** Where ghosts hover over the midway, with a phase so they don't bob in step. */
+  ghosts: Ghost[];
   /** The first x of the two-tile avenue; the gate sits at its south end. */
   avenueX: number;
   spawn: Point;
+}
+
+export interface Ghost extends Point {
+  phase: number;
 }
 
 export const CART_KINDS = ['Popcorn', 'Cotton candy', 'Ice cream', 'Drinks'] as const;
@@ -213,6 +221,7 @@ export function layoutMidway(gameIds: readonly string[]): MidwayMap {
   add('planter', 15, entrance);
   add('planter', 1, height - 2);
 
+  const map = { width, height, blocked, booths };
   return {
     width,
     height,
@@ -222,10 +231,51 @@ export function layoutMidway(gameIds: readonly string[]): MidwayMap {
     booths,
     props,
     bunting,
+    pumpkins: pumpkinSpots(map, AVENUE_X),
+    ghosts: ghostSpots(booths, AVENUE_X),
     avenueX: AVENUE_X,
     // Just inside the gate, off to the side so the arch doesn't hide the player.
     spawn: { x: AVENUE_X + 3.5, y: height - 3 },
   };
+}
+
+/**
+ * Jack-o'-lanterns on open grass: one on each side of every booth, facing the
+ * avenue and away from it, and a pair either side of the gate. Spots that
+ * scenery already covers are skipped, so a pumpkin never sits inside anything.
+ */
+export function pumpkinSpots(
+  map: Pick<MidwayMap, 'width' | 'height' | 'blocked' | 'booths'>,
+  avenueX: number,
+): Point[] {
+  const tiles: Point[] = [];
+  for (const booth of map.booths) {
+    const left = booth.x < avenueX;
+    const inner = left ? booth.x + booth.w : booth.x - 1;
+    const outer = left ? booth.x - 1 : booth.x + booth.w;
+    tiles.push({ x: inner, y: booth.y + booth.h - 1 }, { x: outer, y: booth.y });
+  }
+  tiles.push({ x: avenueX - 4, y: map.height - 3 }, { x: avenueX + 5, y: map.height - 3 });
+  return tiles
+    .filter((tile) => {
+      const { x, y } = tile;
+      return x >= 0 && y >= 0 && x < map.width && y < map.height && !map.blocked[y * map.width + x];
+    })
+    .map(({ x, y }) => ({ x: x + 0.5, y: y + 0.5 }));
+}
+
+/** A ghost over each row of booths, swapping sides of the avenue, and one by the big top. */
+export function ghostSpots(booths: readonly BoothSlot[], avenueX: number): Ghost[] {
+  const ghosts: Ghost[] = [{ x: avenueX + 1, y: 5.5, phase: 0 }];
+  for (let i = 0; i < booths.length; i += 2) {
+    const row = i / 2;
+    ghosts.push({
+      x: row % 2 === 0 ? avenueX - 1.5 : avenueX + 3.5,
+      y: booths[i].y + 1,
+      phase: row * 1.7 + 1,
+    });
+  }
+  return ghosts;
 }
 
 /** Tile position to isometric screen pixels, relative to tile (0, 0)'s top corner. */
